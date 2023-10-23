@@ -6,23 +6,22 @@ import asyncio
 import csv
 import zipfile
 from io import BytesIO
-import sqlalchemy as sa
-from datetime import datetime
-import dbConfig as dbC
+# CLASSES
+from configs.dbFuncs import *
+
 
 # VARIAVEIS GLOBAIS
 mainUrl = "https://armazenamento-dadosabertos.s3.sa-east-1.amazonaws.com/Plano+2016_2018_Grupos+de+dados/INSS+-+Comunica%C3%A7%C3%A3o+de+Acidente+de+Trabalho+-+CAT/"
 
 class Download:
-    def __init__(self, ROOT_DIR):
-        # PARAMETROS DE CONEXAO COM O BANCO
-        self.engine = sa.create_engine('%s+%s://%s:%s@%s:%i/%s'%(dbC.dbType, dbC.driver, dbC.dbUser, dbC.dbPass,dbC.dbHost,dbC.dbPort, dbC.dbName),pool_size=0)
-        self.conn = self.engine.connect()
+    def __init__(self, ROOT_DIR, schema):
+        self.dbFuncs = manageDB(schema)
         self.ROOT_DIR = ROOT_DIR
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")
         self.M2Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_2/")
+        self.dataframes = os.path.join(ROOT_DIR + "/downloads/" + "dataframes/")
         try:
             # CRIA AS PASTAS PARA ARMAZENAR OS ARQUIVOS
             if not os.path.exists(self.downloadPath):
@@ -33,18 +32,10 @@ class Download:
                 os.makedirs(self.M1Path)
             if not os.path.exists(self.M2Path):
                 os.makedirs(self.M2Path)
+            if not os.path.exists(self.dataframes):
+                os.makedirs(self.dataframes)
         except Exception as E:
             print("Exception __init__: " + E)
-
-    def insertLog(self, text):
-        try:
-            insertLogSQL = sa.text(f"INSERT INTO ft_logs (data_evento,hora_evento,evento) values ('{datetime.today().strftime('%d/%m/%Y')}','{datetime.today().strftime('%H:%M:%S')}','{text}');")
-            if self.conn.execution_options(autocommit=False).execute(insertLogSQL):
-                print(text)
-                self.conn.commit()
-
-        except Exception as E:
-            print(E)
 
     # TESTA SE A URL É VALIDA E ACESSIVEL
     async def testUrls(self, fileUrl):
@@ -65,7 +56,7 @@ class Download:
 
     # REALIZA O DOWNLOAD DO ARQUIVO SEPARANDO POR PASTA DE ACORDO COM A EXTENSAO
     async def downloadFile(self, fileName):
-        self.insertLog("Iniciado processo de download dos arquivos!")
+        self.dbFuncs.insertLog("Iniciado processo de download dos arquivos!")
         try:
             asyncio.get_running_loop()
             # for pos, url in enumerate(validUrl):
