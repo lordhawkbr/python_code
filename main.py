@@ -41,15 +41,15 @@ async def main():
     ETLMethods = ETL(ROOT_DIR, schema)
     if len(downloadClass.returnFiles()) < 26:    #28
         # TESTA A URL E INICIA O DOWNLOAD AUTOMATICAMENTE
-        for year in range(2023, atualYear+1):
+        for year in range(2018, atualYear):
             for month, mes in enumerate(arrMonthSTR):
                 if month - 1 < len(arrMonthSTR) and month + 1 < len(arrMonthSTR):
-                    # await asyncio.gather(downloadClass.testUrls(f"cat-{arrMonthSTR[month - 1]}-{arrMonthSTR[month]}-{arrMonthSTR[month + 1]}-{year}.csv"))
-                    # await asyncio.gather(downloadClass.testUrls(f"cat-comp-{arrMonthSTR[month - 1]}{arrMonthSTR[month]}{arrMonthSTR[month + 1]}-{year}.csv"))
-                    # await asyncio.gather(downloadClass.testUrls(f"cat{year - 1}-comp{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
-                    # await asyncio.gather(downloadClass.testUrls(f"cat-comp{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
-                    # await asyncio.gather(downloadClass.testUrls(f"cat-competencia-{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
-                    # await asyncio.gather(downloadClass.testUrls(f"cat-comp-{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.zip"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat-{arrMonthSTR[month - 1]}-{arrMonthSTR[month]}-{arrMonthSTR[month + 1]}-{year}.csv"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat-comp-{arrMonthSTR[month - 1]}{arrMonthSTR[month]}{arrMonthSTR[month + 1]}-{year}.csv"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat{year - 1}-comp{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat-comp{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat-competencia-{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.csv"))
+                    await asyncio.gather(downloadClass.testUrls(f"cat-comp-{arrMonthsINT[month - 1]}-{arrMonthsINT[month]}-{arrMonthsINT[month + 1]}-{year}.zip"))
                     await asyncio.gather(downloadClass.testUrls(f"D.SDA.PDA.005.CAT.{year}{arrMonthsINT[month]}.ZIP"))
     else:
         dbFuncs.insertLog("Todos os arquivos já estão baixados, iniciando criação do BD!")
