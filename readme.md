@@ -16,7 +16,7 @@ Ao final do processo, todos os arquivos que não sejam CSV, são deletados dos d
 Damos inicio em outra etapa do projeto, que é a leitura dos arquivos CSV, em uma ferramenta de integração de dados. Onde é feito o processo de ETL e a criação do banco para armazenamento dos dados.
 O banco segue o modelo star schema, sendo composto por 9 tabelas, sendo seis tabelas dimensão, uma tabela fato e uma tabela temporária.
 Abaixo o diagrama do banco em questão:
-![Alt text](imgs/printDB.png)
+![Print MySQL Workbench](imgs/printDB.png)
 
 # Descrição dos arquivos:
 - ClassDownload.py: 
@@ -38,6 +38,10 @@ Abaixo o diagrama do banco em questão:
     - Aqui está o SQL para criação do banco, incluindo tabelas fato e dimensão.
 - main.py:
     - este é o codigo principal, que irá enviar as URLS para teste e chamar os metodos principais de cada classe.
+
+# VISUALIZAÇÃO DOS DADOS
+![Print Power BI](imgs/b.i.png)
+
 
 Caso tenha interesse em saber mais sobre o funcionamento do código, sobre banco de dados, me siga no LinkedIn para trocarmos uma ideia! xD
 https://www.linkedin.com/in/marllon-macedo-8a5134285/

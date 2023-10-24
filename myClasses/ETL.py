@@ -145,4 +145,3 @@ class ETL:
 
         else:
             self.dbFuncs.insertLog("Processo ETL cancelado!")
-            
