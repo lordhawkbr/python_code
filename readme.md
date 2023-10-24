@@ -40,7 +40,10 @@ Abaixo o diagrama do banco em questão:
     - este é o codigo principal, que irá enviar as URLS para teste e chamar os metodos principais de cada classe.
 
 # VISUALIZAÇÃO DOS DADOS
-![Print Power BI](imgs/b.i.png)
+![Print Power BI](imgs/bi1.png)
+![Print Power BI](imgs/bi2.png)
+![Print Power BI](imgs/bi3.png)
+![Print Power BI](imgs/bi4.png)
 
 
 Caso tenha interesse em saber mais sobre o funcionamento do código, sobre banco de dados, me siga no LinkedIn para trocarmos uma ideia! xD
