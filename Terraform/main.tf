@@ -1,0 +1,174 @@
+# Arquivo de configuração do Terraform
+terraform {
+  required_providers {
+    aws = {
+        source = "hashicorp/aws"
+        version = "3.27"
+    }
+  }
+  required_version = ">= 0.13.4"
+}
+
+# Configuração do provider AWS. A conta e a região que irei utilizar
+provider "aws" {
+    profile = var.aws_profile
+    region = var.aws_region
+}
+
+# [S3] Definição das variáveis para
+locals {
+  files_to_upload = ["../ClassDownload.py","../ClassWorkWithFiles.py", "../dbConfig.py", "../ETL.py", "../main.py", "../README.md","../script.py"]
+}
+
+# [S3] Criação de um bucket S3
+resource "aws_s3_bucket" "proj_repository_bucket" {
+  bucket = "proj_repository_bucket"
+}
+
+# [S3] Copiar o repositorio local para o bucket proj_repository_bucket
+resource "aws_s3_bucket_object" "proj_repository_bucket_object" {
+    for_each = toset(local.files_to_upload)
+
+    bucket = aws_s3_bucket.proj_repository_bucket.id
+    key    = basename(each.value)
+    source = each.value
+}
+
+# [rede] VPC
+resource "aws_vpc" "my_vpc" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "my_vpc"
+  }
+}
+
+# [rede] Subnet
+resource "aws_subnet" "my_subnet" {
+  vpc_id     = aws_vpc.my_vpc.id
+  cidr_block = "10.0.1.0/24"
+  tags = {
+    Name = "my_subnet"
+  }
+}
+
+# [rede] Criação de um security group para que a instância acesse a web
+resource "aws_security_group" "allow_ec2_outbound" {
+  name        = "allow_ec2_outbound"
+  description = "Permitir tafego de saida do EC2"
+  vpc_id = aws_vpc.my_vpc.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# [rede] Criação de um security group para que a instância acesse o SGBD
+resource "aws_security_group" "allow_ec2_to_rds" {
+  name        = "allow_ec2_to_rds"
+  description = "Allow EC2 to RDS traffic"
+  vpc_id = aws_vpc.my_vpc.id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = [ aws_subnet.my_subnet.cidr_block ]
+  }
+}
+
+# [IAM] Policy para permitir acesso ao S3 e RDS
+resource "aws_iam_policy" "access_s3_and_rds" {
+  name        = "AccessS3AndRDS"
+  description = "Política para permitir acesso ao S3 e RDS"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = ["s3:*"],
+        Resource = ["arn:aws:s3:::proj_repository_bucket", "arn:aws:s3:::proj_repository_bucket/*"]
+      },
+      {
+        Effect    = "Allow",
+        Action    = ["rds:*"],
+        Resource  = "arn:aws:rds:${var.aws_region}:${var.aws_account_profile1}:db:proj_db" 
+      }
+    ]
+  })
+
+}
+
+# [IAM] Role para a instância EC2
+resource "aws_iam_role" "ec2_role" {
+  name = "EC2S3RDSRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Effect = "Allow",
+        Sid    = ""
+      }
+    ]
+  })
+}
+
+# [IAM] Anexar a política à role
+resource "aws_iam_role_policy_attachment" "ec2_s3_rds_attachment" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = aws_iam_policy.access_s3_and_rds.arn
+}
+
+# [EC2] Criação de uma instância EC2 e tranferir o repositorio do bucket S3 para a instância EC2
+# 1. Instalar o python3
+# 2. Instalar o awscli
+# 3. Copiar o repositorio do bucket S3 para a instância EC2
+# 4. Criar um cronjob para executar o script ETL.py a cada 24 horas
+
+resource "aws_instance" "my_instance" {
+  ami           = "ami-0e83be366243f524a"
+  instance_type = "t2.micro"
+  iam_instance_profile = aws_iam_role_policy_attachment.ec2_s3_rds_attachment.id
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y 
+              yum install python3 -y
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+              mkdir /repositorio/
+              aws s3 sync s3://proj_repository_bucket/ /repositorio/
+              echo "0 0 * * * root python3 /repositorio/main.py" >> /etc/crontab
+              EOF
+
+  tags = {
+    Name = "my-instance"
+  }
+  vpc_security_group_ids = [ aws_security_group.allow_ec2_outbound.id, aws_security_group.allow_ec2_to_rds.id ]
+  subnet_id = aws_subnet.my_subnet.id
+}
+
+
+# [RDS] Criação de uma instância RDS com MySQL
+resource "aws_db_instance" "my_db" {
+  name = "proj_db"
+  allocated_storage    = 20
+  storage_type         = "gp2"
+  engine               = "mysql"
+  engine_version       = "5.7"
+  instance_class       = "db.t2.micro"
+  username             = var.db_username
+  password             = var.db_password
+  parameter_group_name = "default.mysql5.7"
+  skip_final_snapshot  = false
+  vpc_security_group_ids = [aws_security_group.allow_ec2_to_rds.id]
+}
