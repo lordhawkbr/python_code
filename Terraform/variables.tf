@@ -3,12 +3,12 @@
 
 variable "db_username" {
   type = string
-  default = "root"
+  default = "root1234"
 }
 
 variable "db_password" {
   type = string
-  default = "root"
+  default = "root1234"
 }
 
 variable "aws_profile" {
