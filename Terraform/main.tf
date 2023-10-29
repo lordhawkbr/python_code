@@ -21,15 +21,15 @@ locals {
 }
 
 # [S3] Criação de um bucket S3
-resource "aws_s3_bucket" "proj_repository_bucket" {
-  bucket = "proj_repository_bucket"
+resource "aws_s3_bucket" "proj-repository-bucket" {
+  bucket = "proj-repository-bucket"
 }
 
-# [S3] Copiar o repositorio local para o bucket proj_repository_bucket
-resource "aws_s3_bucket_object" "proj_repository_bucket_object" {
+# [S3] Copiar o repositorio local para o bucket proj-repository-bucket
+resource "aws_s3_bucket_object" "proj-repository-bucket" {
     for_each = toset(local.files_to_upload)
 
-    bucket = aws_s3_bucket.proj_repository_bucket.id
+    bucket = aws_s3_bucket.proj-repository-bucket.id
     key    = basename(each.value)
     source = each.value
 }
@@ -50,6 +50,30 @@ resource "aws_subnet" "my_subnet" {
     Name = "my_subnet"
   }
 }
+
+# [rede] Subnet 2
+resource "aws_subnet" "my_subnet2" {
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "us-east-2b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "my_subnet2"
+  }
+}
+
+# [rede] Subnet Group
+resource "aws_db_subnet_group" "my_db_subnet_group" {
+  name       = "my-database-subnet-group"
+  subnet_ids = [aws_subnet.my_subnet.id, aws_subnet.my_subnet2.id]
+
+  tags = {
+    Name = "my-database-subnet-group"
+  }
+}
+
+
 
 # [rede] Criação de um security group para que a instância acesse a web
 resource "aws_security_group" "allow_ec2_outbound" {
@@ -90,7 +114,7 @@ resource "aws_iam_policy" "access_s3_and_rds" {
       {
         Effect   = "Allow",
         Action   = ["s3:*"],
-        Resource = ["arn:aws:s3:::proj_repository_bucket", "arn:aws:s3:::proj_repository_bucket/*"]
+        Resource = ["arn:aws:s3:::proj-repository-bucket", "arn:aws:s3:::proj-repository-bucket/*"]
       },
       {
         Effect    = "Allow",
@@ -125,7 +149,14 @@ resource "aws_iam_role" "ec2_role" {
 resource "aws_iam_role_policy_attachment" "ec2_s3_rds_attachment" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = aws_iam_policy.access_s3_and_rds.arn
+
 }
+
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "ec2_instance_profile"
+  role = aws_iam_role.ec2_role.name
+}
+
 
 # [EC2] Criação de uma instância EC2 e tranferir o repositorio do bucket S3 para a instância EC2
 # 1. Instalar o python3
@@ -136,7 +167,7 @@ resource "aws_iam_role_policy_attachment" "ec2_s3_rds_attachment" {
 resource "aws_instance" "my_instance" {
   ami           = "ami-0e83be366243f524a"
   instance_type = "t2.micro"
-  iam_instance_profile = aws_iam_role_policy_attachment.ec2_s3_rds_attachment.id
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
   user_data = <<-EOF
               #!/bin/bash
@@ -147,7 +178,7 @@ resource "aws_instance" "my_instance" {
               unzip awscliv2.zip
               sudo ./aws/install
               mkdir /repositorio/
-              aws s3 sync s3://proj_repository_bucket/ /repositorio/
+              aws s3 sync s3://proj-repository-bucket/ /repositorio/
               echo "0 0 * * * root python3 /repositorio/main.py" >> /etc/crontab
               EOF
 
@@ -170,6 +201,7 @@ resource "aws_db_instance" "my_db" {
   username             = var.db_username
   password             = var.db_password
   parameter_group_name = "default.mysql5.7"
-  skip_final_snapshot  = false
+  skip_final_snapshot = true
   vpc_security_group_ids = [aws_security_group.allow_ec2_to_rds.id]
+  db_subnet_group_name = aws_db_subnet_group.my_db_subnet_group.name
 }
