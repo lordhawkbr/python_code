@@ -1,19 +1,17 @@
+# BIBLIOTECAS
 import os
 import aiofiles
 import asyncio
 import csv
-import sqlalchemy as sa
-from datetime import datetime
-import dbConfig as dbC
+# CLASSES
+from configs.dbFuncs import *
 
-newColumnsM1 = ["Agente Causador Acidente","Data Acidente","CBO_1","CBO","CID-10_1","CID-10","CNAE2.0 Empregador","CNAE2.0 Empregador_1","Emitente CAT","Especie do beneficio","Filiacao Segurado","Indica obito Acidente","Munic Empr","Natureza da Lesao","Origem de Cadastramento CAT","Parte Corpo Atingida","Sexo","Tipo do Acidente","UF Munic. Acidente","UF Munic. Empregador","Data Afastamento","Data Despacho Beneficio","Data Acidente_1","Data Nascimento","Data Emissao CAT"]
-newColumnsM2 = ["Agente Causador Acidente","Data Acidente","CBO","CID-10","CNAE2.0 Empregador","CNAE2.0 Empregador_1","Emitente CAT","Especie do beneficio","Filiacao Segurado","Indica obito Acidente","Munic Empr","Natureza da Lesao","Origem de Cadastramento CAT","Parte Corpo Atingida","Sexo","Tipo do Acidente","UF Munic. Acidente","UF Munic. Empregador","Data Afastamento","Data Despacho Beneficio","Data Acidente_1","Data Nascimento","Data Emissao CAT","CNPJ/CEI Empregador"]
+newColumnsM1 = ["Agente_Causador_Acidente","Data_Acidente","CBO_1","CBO","CID_10_1","CID_10","CNAE2_0_Empregador","CNAE2_0_Empregador_1","Emitente_CAT","Especie_do_beneficio","Filiacao_Segurado","Indica_obito_Acidente","Munic_Empr","Natureza_da_Lesao","Origem_de_Cadastramento_CAT","Parte_Corpo_Atingida","Sexo","Tipo_do_Acidente","UF_Munic_Acidente","UF_Munic_Empregador","Data_Afastamento","Data_Despacho_Beneficio","Data_Acidente_1","Data_Nascimento","Data_Emissao_CAT"]
+newColumnsM2 = ["Agente_Causador_Acidente","Data_Acidente","CBO","CID_10","CNAE2_0_Empregador","CNAE2_0_Empregador_1","Emitente_CAT","Especie_do_beneficio","Filiacao_Segurado","Indica_obito_Acidente","Munic_Empr","Natureza_da_Lesao","Origem_de_Cadastramento_CAT","Parte_Corpo_Atingida","Sexo","Tipo_do_Acidente","UF_Munic_Acidente","UF_Munic_Empregador","Data_Afastamento","Data_Despacho_Beneficio","Data_Acidente_1","Data_Nascimento","Data_Emissao_CAT","CNPJ_CEI_Empregador"]
 
 class WorkWithFiles:
-    def __init__(self, ROOT_DIR):
-        # PARAMETROS DE CONEXAO COM O BANCO
-        self.engine = sa.create_engine('%s+%s://%s:%s@%s:%i/%s'%(dbC.dbType, dbC.driver, dbC.dbUser, dbC.dbPass,dbC.dbHost,dbC.dbPort, dbC.dbName),pool_size=0)
-        self.conn = self.engine.connect()
+    def __init__(self, ROOT_DIR, schema):
+        self.dbFuncs = manageDB(schema)
         self.ROOT_DIR = ROOT_DIR
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
@@ -35,15 +33,6 @@ class WorkWithFiles:
                 os.makedirs(self.M2Path)
         except Exception as E:
             print("Exception __init__: " + E)
-
-    def insertLog(self, text):
-        try:
-            insertLogSQL = sa.text(f"INSERT INTO ft_logs (data_evento,hora_evento,evento) values ('{datetime.today().strftime('%d/%m/%Y')}','{datetime.today().strftime('%H:%M:%S')}','{text}');")
-            if self.conn.execution_options(autocommit=False).execute(insertLogSQL):
-                print(text)
-                self.conn.commit()
-        except Exception as E:
-            print(E)
             
     def returnFiles(self,pathDir):
         try:
@@ -67,12 +56,16 @@ class WorkWithFiles:
                     if first_line:
                         first_line = False
                     else:
+                        value = [c.rstrip().replace("  ", "") for c in row.strip().split(";")]
+                        for i in range(len(value)):
+                            if value[i].lower() == "{ñ class}":
+                                value[i] = "000000-Não Informado"
                         await csv.writer(
                             fileWrite,
                             delimiter=";",
                             skipinitialspace=True,
                             lineterminator="\n",
-                        ).writerow([c.rstrip().replace("  ", "") for c in row.strip().split(";")])
+                        ).writerow(value)
 
     async def addHeader(self):
         for csvFile in self.returnFiles(self.tempFilesPatch):
@@ -93,14 +86,14 @@ class WorkWithFiles:
                     writer.writerow(line)
 
     async def main(self):
-        self.insertLog("Iniciado processo de junção dos arquivos p/ montagem dos Templates!")
+        self.dbFuncs.insertLog("Iniciado processo de junção dos arquivos p/ montagem dos Templates!")
         for pos, csvFile in enumerate(self.returnFiles(self.downloadPath)):
             if os.path.abspath(csvFile[1]) == os.path.abspath(self.M1Path):
                 print(f"Reading: {csvFile[0]}")
                 await asyncio.gather(self.readFiles(csvFile[0], "temp_model_1.csv"))
-                self.insertLog(f"Lendo arquivo {pos}/{len(self.returnFiles(self.downloadPath))} do modelo 1!")
+                self.dbFuncs.insertLog(f"Lendo arquivo {int(pos)+1}/{len(self.returnFiles(self.downloadPath))-1} do modelo 1!")
             else:
                 print(f"Reading: {csvFile[0]}")
                 await asyncio.gather(self.readFiles(csvFile[0], "temp_model_2.csv"))
-                self.insertLog(f"Lendo arquivo {pos}/{len(self.returnFiles(self.downloadPath))} do modelo 2!")
+                self.dbFuncs.insertLog(f"Lendo arquivo {int(pos)+1}/{len(self.returnFiles(self.downloadPath))-1} do modelo 2!")
         await asyncio.gather(self.addHeader())
