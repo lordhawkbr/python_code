@@ -28,5 +28,5 @@ variable "aws_region" {
 }
 variable "local_path" {
   type = string
-  default = "C:/Users/Sanderson/Documents/repos/"
+  default = "C:\Users\Marllon\Downloads\PROJETO PUC\Downloads Files\python_code"
 }

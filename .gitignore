@@ -1,2 +1,4 @@
 */.terraform*
 /Terraform/terraform.tfstate
+/downloads
+/tests

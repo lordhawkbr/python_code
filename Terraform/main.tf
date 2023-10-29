@@ -17,7 +17,7 @@ provider "aws" {
 
 # [S3] Definição das variáveis para
 locals {
-  files_to_upload = ["../ClassDownload.py","../ClassWorkWithFiles.py", "../dbConfig.py", "../ETL.py", "../main.py", "../README.md","../script.py"]
+  files_to_upload = ["../myClasses/ClassDownload.py","../myClasses/ClassWorkWithFiles.py", "../configs/dbConfig.py", "../myClasses/ETL.py", "../main.py", "../README.md","../configs/script.py"]
 }
 
 # [S3] Criação de um bucket S3
@@ -142,6 +142,7 @@ resource "aws_instance" "my_instance" {
               #!/bin/bash
               yum update -y 
               yum install python3 -y
+              pip install asyncio os sqlalchemy urllib csv zipfile io aiofiles datetime pandas
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               sudo ./aws/install
