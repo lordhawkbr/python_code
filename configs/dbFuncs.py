@@ -1,18 +1,18 @@
 import sqlalchemy as sa
-import dbConfig as dbC
-import script as mkDatabase
+import configs.script as mkDatabase
 from datetime import datetime
+import os
 
 class manageDB:
-    def __init__(self,schema):
-        self.schema = schema
-        self.engine_string = f"{dbC.dbType}+{dbC.driver}://{dbC.dbUser}:{dbC.dbPass}@{dbC.dbHost}:{dbC.dbPort}"
+    def __init__(self):
+        self.schema = os.getenv("schema")
+        self.engine_string = f"{os.getenv("dbType")}+{os.getenv("driver")}://{os.getenv("dbUser")}:{os.getenv("dbPass")}@{os.getenv("dbHost")}:{os.getenv("dbPort")}"
 
     def r_engine(self):
         return f"{self.engine_string}/{self.schema}"
 
     def makeSchema(self):
-        testEngine = sa.create_engine(f"{dbC.dbType}+{dbC.driver}://{dbC.dbUser}:{dbC.dbPass}@{dbC.dbHost}:{dbC.dbPort}")
+        testEngine = sa.create_engine(f"{os.getenv("dbType")}+{os.getenv("driver")}://{os.getenv("dbUser")}:{os.getenv("dbPass")}@{os.getenv("dbHost")}:{os.getenv("dbPort")}")
         # SE N EXISTIR O SCHEMA EFETUA A CRIACAO DO MESMO E DAS TABELAS
         if not self.schema in sa.inspect(testEngine).get_schema_names():
             stmt = sa.text(f"CREATE SCHEMA `{self.schema}` DEFAULT CHARACTER SET utf8;")

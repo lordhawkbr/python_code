@@ -6,17 +6,17 @@ import asyncio
 import csv
 import zipfile
 from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
 # CLASSES
 from configs.dbFuncs import *
 
 
-# VARIAVEIS GLOBAIS
-mainUrl = "https://armazenamento-dadosabertos.s3.sa-east-1.amazonaws.com/Plano+2016_2018_Grupos+de+dados/INSS+-+Comunica%C3%A7%C3%A3o+de+Acidente+de+Trabalho+-+CAT/"
-
 class Download:
-    def __init__(self, ROOT_DIR, schema):
-        self.dbFuncs = manageDB(schema)
-        self.ROOT_DIR = ROOT_DIR
+    def __init__(self):
+        self.dbFuncs = manageDB()
+        ROOT_DIR = os.getenv("ROOT_DIR")
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")
@@ -38,16 +38,19 @@ class Download:
             print("Exception __init__: " + E)
 
     # TESTA SE A URL É VALIDA E ACESSIVEL
-    async def testUrls(self, fileUrl):
-        fileExtension = "csv" if "csv" in fileUrl else "zip"
+    async def testUrls(self, fileUrl, fileName, fileExtension):
         try:
-            response = requests.urlopen(mainUrl + fileUrl)
+            response = requests.urlopen(fileUrl)
             if response.code == 200 and fileExtension == "csv":
-                print(f"{fileUrl} - Verifing if file not exists and initialing download!")
-                await self.downloadFile(fileUrl)
+                print(
+                    f"{fileUrl} - Verifing if file not exists and initialing download!"
+                )
+                await self.downloadFile(fileUrl, fileName, fileExtension)
             if response.code == 200 and fileExtension == "zip":
-                print(f"{fileUrl} - Verifing if file not exists and initialing download!")
-                await self.downloadFile(fileUrl)
+                print(
+                    f"{fileUrl} - Verifing if file not exists and initialing download!"
+                )
+                await self.downloadFile(fileUrl, fileName, fileExtension)
         except HTTPError as E:
             # print("Extension not recognized or URL unavailable!")
             return
@@ -55,27 +58,29 @@ class Download:
             print(f"Exception testUrls: {E}")
 
     # REALIZA O DOWNLOAD DO ARQUIVO SEPARANDO POR PASTA DE ACORDO COM A EXTENSAO
-    async def downloadFile(self, fileName):
+    async def downloadFile(self, fileUrl, fileName, fileExtension):
         self.dbFuncs.insertLog("Iniciado processo de download dos arquivos!")
         try:
             asyncio.get_running_loop()
-            # for pos, url in enumerate(validUrl):
-            fileUrl = mainUrl + fileName
-            fileExtension = "csv" if "csv" in fileName else "zip"
-
             if fileExtension == "csv":
                 if fileName not in self.returnFiles():
                     print(f"File {fileName} not exists, downloading...")
-                    if requests.urlretrieve(fileUrl, os.path.join(self.tempFilesPatch, fileName)):
+                    if requests.urlretrieve(
+                        fileUrl, os.path.join(self.tempFilesPatch, fileName)
+                    ):
                         await self.moveFiles(fileName)
-                else: print(f"File exists, download cancelled!")
+                else:
+                    print(f"File exists, download cancelled!")
             if fileExtension == "zip":
                 if await self.ViewZipBeforeDownload(fileUrl) == True:
                     print(f"File {fileName} not exists, downloading...")
-                    if requests.urlretrieve(fileUrl, os.path.join(self.tempFilesPatch, fileName)):
+                    if requests.urlretrieve(
+                        fileUrl, os.path.join(self.tempFilesPatch, fileName)
+                    ):
                         await self.extractFile(fileName)
                         await self.moveAndDeleteFiles()
-                else: print(f"File exists, download cancelled!")
+                else:
+                    print(f"File exists, download cancelled!")
         except Exception as E:
             print("Exception downloadFile: " + E)
 

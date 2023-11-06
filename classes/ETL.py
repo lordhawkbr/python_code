@@ -1,21 +1,22 @@
 # BIBLIOTECAS
 from datetime import datetime
 import pandas as pd
-import pandas.io.sql as psql
 import os
 import sqlalchemy as sa
-import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
 # CLASSES
 from configs.dbFuncs import *
 import configs.script as mkDatabase
 
 class ETL:
-    def __init__(self, ROOT_DIR, schema):
+    def __init__(self):
         # PARAMETROS DE CONEXAO COM O BANCO
-            self.dbFuncs = manageDB(schema)
+            ROOT_DIR = os.getenv("ROOT_DIR")
+            self.dbFuncs = manageDB()
             self.engine = sa.create_engine(self.dbFuncs.r_engine())
             self.conn = self.engine.connect()
-            self.ROOT_DIR = ROOT_DIR
             self.tempDF = pd.DataFrame()
             self.mainDF = pd.DataFrame()
             self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
