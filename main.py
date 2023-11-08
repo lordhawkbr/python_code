@@ -26,12 +26,11 @@ async def main():
         data = json.loads(response.read())
         recursos = data["conjuntoDadosForm"]["recursos"]
         for cat in recursos:
-            if cat["formato"].lower() == "zip":
-                await asyncio.gather(
-                    downloadClass.testUrls(
-                        cat["link"], cat["titulo"], cat["formato"].lower()
-                    )
+            await asyncio.gather(
+                downloadClass.testUrls(
+                    cat["link"], cat["titulo"], cat["formato"].lower()
                 )
+            )
     else:
         print("O link para o recurso está indisponível!")
     # MONTA DOIS ARQUIVOS CSV COM A JUNCAO DOS DOIS TIPOS DOS MODELOS
