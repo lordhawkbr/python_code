@@ -14,7 +14,7 @@ import configs.script as mkDatabase
 class ETL:
     def __init__(self):
         # PARAMETROS DE CONEXAO COM O BANCO
-            ROOT_DIR = os.path.abspath("..")
+            ROOT_DIR = os.path.abspath(os.curdir)
             self.dbFuncs = manageDB()
             self.engine = sa.create_engine(self.dbFuncs.r_engine())
             self.conn = self.engine.connect()

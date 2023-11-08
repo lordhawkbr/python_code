@@ -67,7 +67,7 @@ newColumnsM2 = [
 class WorkWithFiles:
     def __init__(self):
         self.dbFuncs = manageDB()
-        ROOT_DIR = os.path.abspath("..")
+        ROOT_DIR = os.path.abspath(os.curdir)
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")
