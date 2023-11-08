@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import sqlalchemy as sa
 from dotenv import load_dotenv
+import shutil
 
 load_dotenv()
 # CLASSES
@@ -24,7 +25,7 @@ class ETL:
             self.M1Path = os.path.join(self.downloadPath + "modelo_1/")
             self.M2Path = os.path.join(self.downloadPath + "modelo_2/")
             self.dataframes = os.path.join(self.downloadPath + "dataframes/")
-
+            
     def mountMainDF(self):
         # MONTAGEM DO DATAFRAME FINAL MESCLANDO OS MODELOS 1 E 2
         df_m1 = pd.read_csv(self.tempFilesPatch + "/temp_model_1.csv", delimiter=";", usecols=mkDatabase.useCols,low_memory=False,dtype=str, encoding="utf-8")
@@ -142,7 +143,8 @@ class ETL:
             df_fato = self.makeFact()
             if df_fato.to_sql("ft_cats", self.engine, if_exists="append", index=False):
                 self.dbFuncs.insertLog("Registros da tabela ft_cats inseridos!")
+                shutil.rmtree(self.dataframes)
+                self.dbFuncs.insertLog("Dataframes temporários deletados!")
                 self.dbFuncs.insertLog("Processo de montagem do BIG DATA finalizado!")
-
         else:
             self.dbFuncs.insertLog("Processo ETL cancelado!")

@@ -94,17 +94,20 @@ class WorkWithFiles:
             csvFiles = []
             for root, dirs, files in os.walk(pathDir):
                 for file in files:
-                    csvFiles.append([os.path.join(root, file), root])
+                    if "dm_" not in file and "ft_temp" not in file:
+                        csvFiles.append([os.path.join(root, file), root])
             return csvFiles
         except Exception as E:
             print("Exception returnFiles: " + E)
 
     async def readFiles(self, csvFile, fileNameToSave):
+        # DEFINE O ENCODING A SER USADO PARA ABRIR O ARQUIVO
+        encodingFile = "UTF-8" if self.isUTF8(csvFile) else "latin-1"
         async with aiofiles.open(
             self.tempFilesPatch + "/" + fileNameToSave, mode="a", encoding="utf-8"
         ) as fileWrite:
             async with aiofiles.open(
-                csvFile, mode="r", encoding="latin-1", newline=None
+                csvFile, mode="r", encoding=encodingFile, newline=None
             ) as file:
                 first_line = True
                 async for row in file:
@@ -123,6 +126,18 @@ class WorkWithFiles:
                             skipinitialspace=True,
                             lineterminator="\n",
                         ).writerow(value)
+
+    def isUTF8(self, fileName):
+        data = open(fileName, "rb").read()
+        try:
+            decoded = data.decode('UTF-8')
+        except UnicodeDecodeError:
+            return False
+        else:
+            for ch in decoded:
+                if 0xD800 <= ord(ch) <= 0xDFFF:
+                    return False
+            return True
 
     async def addHeader(self):
         for csvFile in self.returnFiles(self.tempFilesPatch):
@@ -151,12 +166,12 @@ class WorkWithFiles:
                 print(f"Reading: {csvFile[0]}")
                 await asyncio.gather(self.readFiles(csvFile[0], "temp_model_1.csv"))
                 self.dbFuncs.insertLog(
-                    f"Lendo arquivo {int(pos)+1}/{len(self.returnFiles(self.downloadPath))-1} do modelo 1!"
+                    f"Lendo arquivo {int(pos)+1} do modelo 1!"
                 )
             else:
                 print(f"Reading: {csvFile[0]}")
                 await asyncio.gather(self.readFiles(csvFile[0], "temp_model_2.csv"))
                 self.dbFuncs.insertLog(
-                    f"Lendo arquivo {int(pos)+1}/{len(self.returnFiles(self.downloadPath))-1} do modelo 2!"
+                    f"Lendo arquivo {int(pos)+1} do modelo 2!"
                 )
         await asyncio.gather(self.addHeader())

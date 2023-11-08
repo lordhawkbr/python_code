@@ -59,26 +59,27 @@ class Download:
 
     # REALIZA O DOWNLOAD DO ARQUIVO SEPARANDO POR PASTA DE ACORDO COM A EXTENSAO
     async def downloadFile(self, fileUrl, fileName, fileExtension):
-        self.dbFuncs.insertLog("Iniciado processo de download dos arquivos!")
+        fileNameComplete = fileName + "." + fileExtension
+        print(fileNameComplete)
         try:
             asyncio.get_running_loop()
             if fileExtension == "csv":
-                if fileName not in self.returnFiles():
+                if fileNameComplete not in self.returnFiles():
                     print(f"File {fileName} not exists, downloading...")
                     if requests.urlretrieve(
-                        fileUrl, os.path.join(self.tempFilesPatch, fileName)
+                        fileUrl, os.path.join(self.tempFilesPatch, fileNameComplete)
                     ):
-                        await self.moveFiles(fileName)
+                        await self.moveFiles(fileNameComplete)
                 else:
                     print(f"File exists, download cancelled!")
             if fileExtension == "zip":
                 if await self.ViewZipBeforeDownload(fileUrl) == True:
                     print(f"File {fileName} not exists, downloading...")
                     if requests.urlretrieve(
-                        fileUrl, os.path.join(self.tempFilesPatch, fileName)
+                        fileUrl, os.path.join(self.tempFilesPatch, fileNameComplete)
                     ):
-                        await self.extractFile(fileName)
-                        await self.moveAndDeleteFiles()
+                        await self.extractFile(fileNameComplete)
+                        await self.moveAndDeleteFiles(fileNameComplete)
                 else:
                     print(f"File exists, download cancelled!")
         except Exception as E:
@@ -106,7 +107,7 @@ class Download:
                 for file_info in file_info_list:
                     if (
                         not file_info.filename in self.returnFiles()
-                        and "csv" in file_info.filename
+                        and "csv" or "CSV" in file_info.filename
                     ):
                         print(f"Extracting file {fileName}")
                         zip.extract(
@@ -123,7 +124,8 @@ class Download:
             tempArr = []
             for root, dirs, files in os.walk(self.downloadPath):
                 for name in files:
-                    tempArr.append(name)
+                    if "dm_" not in name and "ft_temp" not in name:
+                        tempArr.append(name)
             return tempArr
         except Exception as E:
             print("Exception returnFiles: " + E)
@@ -151,7 +153,7 @@ class Download:
             print("moveFiles: " + Exception)
 
     # DELETAR ARQUIVOS TEMPORARIOS (ZIPS E DIFERENTES DE CSV)
-    async def moveAndDeleteFiles(self):
+    async def moveAndDeleteFiles(self, fileNameComplete):
         try:
             # MOVE OS ARQUIVOS CSV DA PASTA DESCOMPACTADA
             for root, dirs, files in os.walk(self.tempFilesPatch):

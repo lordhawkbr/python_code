@@ -36,7 +36,7 @@ Através de um arquivo JSON, composto por informações de acesso aos arquivos d
     - MySQL (preferencialmente)
     - Instalação das bibliotecas Python necessárias:
     - Execute o comando na pasta do projeto através do console/prompt:
-        <code>pip install sqlalchemy datetime urllib3 os asyncio csv zipfile pandas mysqlclient python-dotenv</code>
+        <code>pip install sqlalchemy datetime urllib3 asyncio pandas python-dotenv aiofiles mysqlclient</code>
 
 2. Edite o arquivo .ENV com os valores necessários;
 

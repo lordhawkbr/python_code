@@ -1,4 +1,8 @@
-/Terraform
 /downloads
 /tests
+/terraform
 /classes/__pycache__
+/configs/__pycache__
+.vs
+Dockerfile
+requirements.txt
