@@ -60,7 +60,6 @@ class Download:
     # REALIZA O DOWNLOAD DO ARQUIVO SEPARANDO POR PASTA DE ACORDO COM A EXTENSAO
     async def downloadFile(self, fileUrl, fileName, fileExtension):
         fileNameComplete = fileName + "." + fileExtension
-        print(fileNameComplete)
         try:
             asyncio.get_running_loop()
             if fileExtension == "csv":

@@ -25,10 +25,10 @@ async def main():
     if response.code == 200:
         data = json.loads(response.read())
         recursos = data["conjuntoDadosForm"]["recursos"]
-        for cat in recursos:
+        for pos,cat in enumerate(recursos):
             await asyncio.gather(
                 downloadClass.testUrls(
-                    cat["link"], cat["titulo"], cat["formato"].lower()
+                    cat[pos]["link"], f"arquivo_cat_{pos}", cat[pos]["formato"].lower()
                 )
             )
     else:
