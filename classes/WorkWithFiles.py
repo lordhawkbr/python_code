@@ -33,7 +33,7 @@ newColumnsM1 = [
     "Data_Despacho_Beneficio",
     "Data_Acidente_1",
     "Data_Nascimento",
-    "Data_Emissao_CAT",
+    "Data_Emissao_CAT"
 ]
 newColumnsM2 = [
     "Agente_Causador_Acidente",
@@ -59,7 +59,7 @@ newColumnsM2 = [
     "Data_Acidente_1",
     "Data_Nascimento",
     "Data_Emissao_CAT",
-    "CNPJ_CEI_Empregador",
+    "CNPJ_CEI_Empregador"
 ]
 
 class WorkWithFiles:
@@ -114,7 +114,7 @@ class WorkWithFiles:
                             c.rstrip().replace("  ", "") for c in row.strip().split(";")
                         ]
                         for i in range(len(value)):
-                            if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado"]:
+                            if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado", "000000-não Informado"]:
                                 value[i] = "0000"
                         await csv.writer(
                             fileWrite,
