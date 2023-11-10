@@ -126,4 +126,6 @@ class ETL:
         await self.createMDF()
         await self.createTemp()
         await self.createFact()
+        shutil.rmtree(self.dataframes)
+        self.dbFuncs.insertLog("Dataframes temporários deletados!")
         self.dbFuncs.insertLog("Processo de montagem do BIG DATA finalizado!")

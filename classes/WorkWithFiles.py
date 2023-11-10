@@ -63,6 +63,7 @@ newColumnsM2 = [
 ]
 
 class WorkWithFiles:
+    
     def __init__(self, ROOT_DIR):
         self.dbFuncs = manageDB()
         self.ROOT_DIR = ROOT_DIR
@@ -70,6 +71,8 @@ class WorkWithFiles:
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")
         self.M2Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_2/")
+        self.temp1Path  = os.path.join(self.tempFilesPatch + "/temp_model_1.csv")
+        self.temp2Path  = os.path.join(self.tempFilesPatch + "/temp_model_2.csv")
         if os.path.exists(self.tempFilesPatch + "/temp_model_1.csv"):
             os.remove(self.tempFilesPatch + "/temp_model_1.csv")
         if os.path.exists(self.tempFilesPatch + "/temp_model_2.csv"):
@@ -86,6 +89,7 @@ class WorkWithFiles:
                 os.makedirs(self.M2Path)
         except Exception as E:
             print("Exception __init__: " + E)
+    
     def returnFiles(self, pathDir):
         try:
             csvFiles = []
@@ -96,6 +100,7 @@ class WorkWithFiles:
             return csvFiles
         except Exception as E:
             print("Exception returnFiles: " + E)
+    
     async def readFiles(self, csvFile, fileNameToSave):
         # DEFINE O ENCODING A SER USADO PARA ABRIR O ARQUIVO
         encodingFile = "UTF-8" if self.isUTF8(csvFile) else "latin-1"
@@ -122,6 +127,7 @@ class WorkWithFiles:
                             skipinitialspace=True,
                             lineterminator="\n",
                         ).writerow(value)
+    
     def isUTF8(self, fileName):
         data = open(fileName, "rb").read()
         try:
@@ -133,23 +139,47 @@ class WorkWithFiles:
                 if 0xD800 <= ord(ch) <= 0xDFFF:
                     return False
             return True
-    async def addHeader(self):
-        for csvFile in self.returnFiles(self.tempFilesPatch):
-            if "temp_model_1" in csvFile[0]:
-                print(f"Editing Header from file: {csvFile[0]}")
-                fieldNames = newColumnsM1
-            else:
-                print(f"Editing Header from file: {csvFile[0]}")
-                fieldNames = newColumnsM2
+    
+    async def addHeaderM1(self):
+        self.dbFuncs.insertLog("Adicionando novo header ao template 1")
+        with open(self.temp1Path, "r", encoding="utf-8") as infile:
+            reader = list(csv.reader(infile, delimiter=";"))
+            reader.insert(0, newColumnsM1)
 
-            with open(csvFile[0], "r", encoding="utf-8") as infile:
-                reader = list(csv.reader(infile, delimiter=";"))
-                reader.insert(0, fieldNames)
+        with open(self.temp1Path, "w", encoding="utf-8") as outfile:
+            writer = csv.writer(outfile, delimiter=";", lineterminator="\n")
+            for line in reader:
+                writer.writerow(line)
 
-            with open(csvFile[0], "w", encoding="utf-8") as outfile:
-                writer = csv.writer(outfile, delimiter=";", lineterminator="\n")
-                for line in reader:
-                    writer.writerow(line)
+    async def addHeaderM2(self):
+        self.dbFuncs.insertLog("Adicionando novo header ao template 2")
+        with open(self.temp2Path, "r", encoding="utf-8") as infile:
+            reader = list(csv.reader(infile, delimiter=";"))
+            reader.insert(0, newColumnsM2)
+
+        with open(self.temp2Path, "w", encoding="utf-8") as outfile:
+            writer = csv.writer(outfile, delimiter=";", lineterminator="\n")
+            for line in reader:
+                writer.writerow(line)
+
+    # async def addHeader(self):
+        # for csvFile in self.returnFiles(self.tempFilesPatch):
+        #     if "temp_model_1" in csvFile[0]:
+        #         print(f"Editing Header from file: {csvFile[0]}")
+        #         fieldNames = newColumnsM1
+        #     else:
+        #         print(f"Editing Header from file: {csvFile[0]}")
+        #         fieldNames = newColumnsM2
+
+        #     with open(csvFile[0], "r", encoding="utf-8") as infile:
+        #         reader = list(csv.reader(infile, delimiter=";"))
+        #         reader.insert(0, fieldNames)
+
+        #     with open(csvFile[0], "w", encoding="utf-8") as outfile:
+        #         writer = csv.writer(outfile, delimiter=";", lineterminator="\n")
+        #         for line in reader:
+        #             writer.writerow(line)
+    
     async def main(self):
         totalFiles = len(self.returnFiles(self.downloadPath))
         self.dbFuncs.insertLog(
@@ -169,4 +199,5 @@ class WorkWithFiles:
                     f"Lendo arquivo {int(pos)+1}/{totalFiles}"
                 )
         # ACESSA OS TEMPLATES E ADICIONA UM NOVO HEADER
-        await asyncio.gather(self.addHeader())
+        await self.addHeaderM1()
+        await self.addHeaderM2()
