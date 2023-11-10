@@ -14,9 +14,9 @@ from configs.dbFuncs import *
 
 
 class Download:
-    def __init__(self):
+    def __init__(self, ROOT_DIR):
         self.dbFuncs = manageDB()
-        ROOT_DIR = os.path.abspath(os.curdir)
+        self.ROOT_DIR = ROOT_DIR
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")

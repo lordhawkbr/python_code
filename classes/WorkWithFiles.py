@@ -63,9 +63,9 @@ newColumnsM2 = [
 ]
 
 class WorkWithFiles:
-    def __init__(self):
+    def __init__(self, ROOT_DIR):
         self.dbFuncs = manageDB()
-        ROOT_DIR = os.path.abspath(os.curdir)
+        self.ROOT_DIR = ROOT_DIR
         self.downloadPath = os.path.join(ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(ROOT_DIR + "/downloads/" + "temp/")
         self.M1Path = os.path.join(ROOT_DIR + "/downloads/" + "modelo_1/")
@@ -91,7 +91,7 @@ class WorkWithFiles:
             csvFiles = []
             for root, dirs, files in os.walk(pathDir):
                 for file in files:
-                    if "dm_" not in file and "ft_temp" not in file and "temp_" not in file:
+                    if "dm_" not in file and "ft_temp" not in file:
                         csvFiles.append([os.path.join(root, file), root])
             return csvFiles
         except Exception as E:
@@ -114,8 +114,8 @@ class WorkWithFiles:
                             c.rstrip().replace("  ", "") for c in row.strip().split(";")
                         ]
                         for i in range(len(value)):
-                            if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado", "000000-não Informado"]:
-                                value[i] = "0000"
+                            if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado", "000000-não informado"]:
+                                value[i] = "000-ignorado"
                         await csv.writer(
                             fileWrite,
                             delimiter=";",

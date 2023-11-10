@@ -12,11 +12,12 @@ from classes.ETL import *
 from configs.dbFuncs import *
 # MAIN FUNC
 async def main():
+    ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
     # INSTANCIA AS CLASSES
     dbFuncs = manageDB()
     dbFuncs.makeSchema()
-    downloadClass = Download()
-    wwfClass = WorkWithFiles()
+    downloadClass = Download(ROOT_DIR)
+    wwfClass = WorkWithFiles(ROOT_DIR)
     url = "https://dados.gov.br/api/publico/conjuntos-dados/inss-comunicacao-de-acidente-de-trabalho-cat1"
     response = requests.urlopen(url)
     if response.code == 200:

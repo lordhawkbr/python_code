@@ -13,6 +13,7 @@ class manageDB:
         self.dbPort = os.getenv("dbPort")
         self.dbName = os.getenv("dbName")
         self.engine_string = f"{self.dbType}+{self.dbDriver}://{self.dbUser}:{self.dbPass}@{self.dbHost}:{self.dbPort}"
+        self.makeSchema()
 
     def r_engine(self):
         return f"{self.engine_string}/{self.dbName}"
@@ -27,7 +28,6 @@ class manageDB:
                 newEngine = sa.create_engine(f"{self.engine_string}/{self.dbName}")
                 create_tables = sa.text(mkDatabase.create_tables)
                 newEngine.connect().execute(create_tables)
-                # mkDatabase.metadata.create_all(newEngine)
             else:
                 # SE JA EXISTIR, EFETUA A LIMPEZA DAS TABELAS
                 newEngine = sa.create_engine(f"{self.engine_string}/{self.dbName}")
