@@ -36,5 +36,6 @@ async def main():
     #EFETUA O PROCESSO ETL E MONTA AS TABELAS FATO E DIMENSAO
     ETLMethods = ETL(ROOT_DIR)
     await ETLMethods.main()
+    
 # EXECUTA A MAIN FUNC
 asyncio.run(main())
