@@ -83,6 +83,10 @@ class WorkWithFiles:
                 os.makedirs(self.M1Path)
             if not os.path.exists(self.M2Path):
                 os.makedirs(self.M2Path)
+            if os.path.exists(self.tempFilesPatch + "temp_model_1.csv"):
+                os.remove(self.tempFilesPatch + "temp_model_1.csv")
+            if os.path.exists(self.tempFilesPatch + "temp_model_2.csv"):
+                os.remove(self.tempFilesPatch + "temp_model_2.csv")
         except Exception as E:
             print("Exception __init__: " + E)
     
@@ -114,6 +118,7 @@ class WorkWithFiles:
                 skipinitialspace=True,
                 lineterminator="\n",
             ).writerow(Columns)
+        self.dbFuncs.insertLog(f"Arquivo {fileName} criado!")
     
     def isUTF8(self, fileName):
         data = open(fileName, "rb").read()
@@ -127,8 +132,7 @@ class WorkWithFiles:
                     return False
             return True
         
-    async def readFiles(self, csvFile, fileNameToSave, Columns):
-        await self.createTemplateFile(fileNameToSave, Columns)
+    async def readFiles(self, csvFile, fileNameToSave):
         # DEFINE O ENCODING A SER USADO PARA ABRIR O ARQUIVO
         encodingFile = "UTF-8" if self.isUTF8(csvFile) else "latin-1"
         async with aiofiles.open(
@@ -157,19 +161,15 @@ class WorkWithFiles:
 
     async def main(self):
         totalFiles = len(self.returnFiles(self.downloadPath))
-        self.dbFuncs.insertLog(
-            "Iniciado processo de junção dos arquivos p/ montagem dos Templates!"
-        )
+        await self.createTemplateFile("temp_model_1.csv", newColumnsM1)
+        await self.createTemplateFile("temp_model_2.csv", newColumnsM2)
+        self.dbFuncs.insertLog("Iniciado processo de junção dos arquivos p/ montagem dos Templates!")
         for pos, csvFile in enumerate(self.returnFiles(self.downloadPath)):
             if os.path.abspath(csvFile[1]) == os.path.abspath(self.M1Path):
                 print(f"Reading: {csvFile[0]}")
-                await asyncio.gather(self.readFiles(csvFile[0], "temp_model_1.csv", newColumnsM1))
-                self.dbFuncs.insertLog(
-                    f"Lendo arquivo {int(pos)+1}/{totalFiles}"
-                )
+                await asyncio.gather(self.readFiles(csvFile[0], "temp_model_1.csv"))
+                self.dbFuncs.insertLog(f"Reading finished: {int(pos)+1}/{totalFiles}")
             else:
                 print(f"Reading: {csvFile[0]}")
-                await asyncio.gather(self.readFiles(csvFile[0], "temp_model_2.csv", newColumnsM2))
-                self.dbFuncs.insertLog(
-                    f"Lendo arquivo {int(pos)+1}/{totalFiles}"
-                )
+                await asyncio.gather(self.readFiles(csvFile[0], "temp_model_2.csv"))
+                self.dbFuncs.insertLog(f"Reading finished: {int(pos)+1}/{totalFiles}")

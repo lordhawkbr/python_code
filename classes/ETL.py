@@ -5,8 +5,9 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 import configs.dbFuncs as dbFuncs
-import configs.script as mkDatabase
 import shutil
+import pymysql
+import psutil
 
 class ETL:
     def __init__(self, ROOT_DIR):
@@ -14,12 +15,13 @@ class ETL:
         self.useCols = ["Agente_Causador_Acidente", "Data_Acidente", "CBO", "CID_10", "CNAE2_0_Empregador", "CNAE2_0_Empregador_1", "Indica_obito_Acidente", "Munic_Empr", "Natureza_da_Lesao", "Parte_Corpo_Atingida", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "UF_Munic_Empregador", "Data_Afastamento", "Data_Nascimento"]
         self.ROOT_DIR = ROOT_DIR
         self.engine = sa.create_engine(self.dbFuncs.r_engine())
-        self.conn = self.engine.connect()
         self.downloadPath = os.path.join(self.ROOT_DIR + "/downloads/")
         self.tempFilesPatch = os.path.join(self.downloadPath + "temp/")
         self.dataframes = os.path.join(self.downloadPath + "dataframes/")
         self.mainDF = pd.DataFrame()
         self.tempDF = pd.DataFrame()
+        systemMemory = psutil.virtual_memory().free / 1024 / 1024 / 1024
+        self.chuncksize =  200000 if systemMemory > 4 else 100000
         try:
             if not os.path.exists(self.dataframes):
                 os.makedirs(self.dataframes)
@@ -28,13 +30,21 @@ class ETL:
                 os.makedirs(self.dataframes)
         except Exception as E:
             print("Exception __init__: " + E)
-    
+
+    def converter_data(self, dt):
+        if len(dt) == 6:
+            return f"{dt[:4]}/{dt[4:]}"
+        if len(dt) >= 10:
+            return pd.to_datetime(dt, format="%d/%m/%Y").strftime("%Y/%m")
+        else:
+            return dt
+        
     async def workMainDF(self, dm_to_concat, columnsSelect, columnFilter, op, newColumns, string):
         self.dbFuncs.insertLog(f"Iniciada montagem do DF {dm_to_concat}")
         fileName = dm_to_concat
         finalDF = pd.DataFrame()
-        for i in range(0, len(self.mainDF), 100000):
-            chunk = self.mainDF.iloc[i:i + 100000]
+        for i in range(0, len(self.mainDF), self.chuncksize):
+            chunk = self.mainDF.iloc[i:i + self.chuncksize]
             if op == 1:
                 dm_to_concat = chunk[columnsSelect].str.split(string, n=1, expand=True)
                 dm_to_concat.columns = newColumns
@@ -49,6 +59,9 @@ class ETL:
             if op == 3:
                 dm_to_concat = chunk[columnsSelect].copy()
             finalDF = pd.concat([finalDF, dm_to_concat], ignore_index=False)
+
+            if fileName == "dm_acidentes":
+                finalDF["Data_Acidente"] = finalDF["Data_Acidente"].apply(self.converter_data)
 
         if op != 3:
             finalDF = finalDF.drop_duplicates(subset=columnFilter).reset_index(drop=True).sort_values(by=columnFilter)
@@ -76,8 +89,8 @@ class ETL:
     
     async def createTemp(self):
         self.dbFuncs.insertLog("Iniciada montagem do DF TEMP")
-        for i in range(0, len(self.mainDF), 100000):
-            chunk = self.mainDF[i:i + 100000].copy()
+        for i in range(0, len(self.mainDF), self.chuncksize):
+            chunk = self.mainDF[i:i + self.chuncksize].copy()
             chunk[["CBO", "Ocupacao"]] = chunk["CBO"].str.split("-", n=1, expand=True)
             if chunk["CID_10"].str.contains("|".join(["000-ignorado", "000000-Não Informado"])).any():
                 chunk["CID_10"] = chunk["CID_10"].str.replace("-", " ")
@@ -87,6 +100,7 @@ class ETL:
             chunk[["CIM", "Munic_Empr"]] = chunk["Munic_Empr"].str.split("-", n=1, expand=True)
             self.tempDF = pd.concat([self.tempDF, chunk], ignore_index=True)
             chunk.to_sql("ft_temp_cats", self.engine, if_exists="append", index=True, index_label="id")
+            chunk.to_csv(self.tempFilesPatch + "ft_temp_cats.csv", sep=";", encoding="utf-8", index=True, index_label="id", mode="a+")
         self.dbFuncs.insertLog("Tabela ft_temp_cats inserida no BD!")
 
     def loadCSV(self, fileName, index_col):
