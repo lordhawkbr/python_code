@@ -13,11 +13,11 @@ class manageDB:
         self.dbHost = os.getenv("dbHost")
         self.dbPort = os.getenv("dbPort")
         self.dbName = os.getenv("dbName")
-        self.engine_string = pymysql.Connect(host=self.dbHost, user=self.dbUser, database=None, password=self.dbPass, charset='utf8mb4',cursorclass=pymysql.cursors.DictCursor,autocommit=True)
+        self.engine_string = pymysql.Connect(host=self.dbHost, user=self.dbUser, database=None, password=self.dbPass,  cursorclass=pymysql.cursors.DictCursor,autocommit=True)
     
     def conn(self):
         try:
-            conexao = pymysql.Connect(host=self.dbHost,user=self.dbUser,database=self.dbName,password=self.dbPass,charset='utf8mb4',cursorclass=pymysql.cursors.DictCursor,autocommit=True)
+            conexao = pymysql.Connect(host=self.dbHost,user=self.dbUser,database=self.dbName,password=self.dbPass, cursorclass=pymysql.cursors.DictCursor,autocommit=True)
             return conexao
         except pymysql.Error as e:
             return None
@@ -38,7 +38,7 @@ class manageDB:
 
     def exec(self, cursor, method):
         if method == 1:
-            create_sql = "CREATE SCHEMA {} DEFAULT CHARACTER SET utf8;"
+            create_sql = "CREATE SCHEMA {};"
             cursor.execute(create_sql.format(self.dbName))
             cursor.execute(f"USE {self.dbName}")
             create_tables = mkDatabase.create_tables
@@ -47,7 +47,7 @@ class manageDB:
         else:
             drop_sql = "DROP SCHEMA {};"
             cursor.execute(drop_sql.format(self.dbName))
-            create_sql = "CREATE SCHEMA {} DEFAULT CHARACTER SET utf8;"
+            create_sql = "CREATE SCHEMA {};"
             cursor.execute(create_sql.format(self.dbName))
             cursor.execute(f"USE {self.dbName}")
             create_tables = mkDatabase.create_tables
