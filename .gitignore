@@ -6,3 +6,4 @@
 .vs
 Dockerfile
 requirements.txt
+.env_producao.txt
