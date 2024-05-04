@@ -152,6 +152,7 @@ class WorkWithFiles:
                         for i in range(len(value)):
                             if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado", "000000-não informado"]:
                                 value[i] = "000-ignorado"
+                            value[i] = value[i].lower()
                         await csv.writer(
                             fileWrite,
                             delimiter=";",

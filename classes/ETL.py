@@ -8,11 +8,15 @@ import configs.dbFuncs as dbFuncs
 import shutil
 import pymysql
 import psutil
+import configs.tabelasAuxiliares as tbAux
+import re
 
 class ETL:
     def __init__(self, ROOT_DIR):
         self.dbFuncs = dbFuncs.manageDB()
         self.useCols = ["Agente_Causador_Acidente", "Data_Acidente", "CBO", "CID_10", "CNAE2_0_Empregador", "CNAE2_0_Empregador_1", "Indica_obito_Acidente", "Munic_Empr", "Natureza_da_Lesao", "Parte_Corpo_Atingida", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "UF_Munic_Empregador", "Data_Afastamento", "Data_Nascimento"]
+        self.partesCorpo_df = tbAux.partesCorpo_df
+        self.agentes_df = tbAux.agentes_df
         self.ROOT_DIR = ROOT_DIR
         self.engine = sa.create_engine(self.dbFuncs.r_engine())
         self.downloadPath = os.path.join(self.ROOT_DIR + "/downloads/")
@@ -38,7 +42,7 @@ class ETL:
             return pd.to_datetime(dt, format="%d/%m/%Y").strftime("%Y/%m")
         else:
             return dt
-        
+
     async def workMainDF(self, dm_to_concat, columnsSelect, columnFilter, op, newColumns, string):
         self.dbFuncs.insertLog(f"Iniciada montagem do DF {dm_to_concat}")
         fileName = dm_to_concat
@@ -53,30 +57,94 @@ class ETL:
                     dm_to_concat = chunk[columnsSelect].str.replace("-", " ")
                 else:
                     dm_to_concat = chunk[columnsSelect].str.replace(".", "")
-                    
                 dm_to_concat = dm_to_concat.str.split(string, n=1, expand=True)
                 dm_to_concat.columns = newColumns
             if op == 3:
                 dm_to_concat = chunk[columnsSelect].copy()
+
             finalDF = pd.concat([finalDF, dm_to_concat], ignore_index=False)
 
             if fileName == "dm_acidentes":
                 finalDF["Data_Acidente"] = finalDF["Data_Acidente"].apply(self.converter_data)
 
-        if op != 3:
+        if op != "dm_acidentes":
             finalDF = finalDF.drop_duplicates(subset=columnFilter).reset_index(drop=True).sort_values(by=columnFilter)
-
+        
         finalDF.to_csv(self.dataframes + f"{fileName}.csv", sep=";", encoding="utf-8", index=True, index_label="id", mode="a+")
         finalDF.to_sql(f"{fileName}", self.engine, if_exists="append", index=True, index_label="id")
         self.dbFuncs.insertLog(f"DF {fileName} inserido no BD!")
+        
+    async def mapear_valores(self, dataframe1, dataframe2):
+        map_valores = {}
+        count = 0
+        for texto in dataframe1:
+            count += 1
+            print(f"Mapeando {texto} - {count}/{len(dataframe1)}")
+            texto_limpo = await self.remove_caracteres_especiais(texto)
+            valor_correspondente = dataframe2[dataframe2["Desc"].str.contains(re.escape(texto_limpo), regex=True)]["Desc"].values
+            correspondencias = await self.encontrar_correspondencia(texto_limpo, dataframe2)
+            
+            if len(valor_correspondente) == 0 and len(correspondencias) > 0:
+                valor_correspondente = correspondencias
+            if len(valor_correspondente) > 1:
+                valor_correspondente_encontrado = next((txt for txt in valor_correspondente if txt.startswith(texto_limpo)), None)
+                if valor_correspondente_encontrado:
+                    valor_correspondente = valor_correspondente_encontrado
+                else:
+                    valor_correspondente = valor_correspondente[0]
+            if valor_correspondente == None:
+                valor_correspondente = "000 ignorado"
+
+            map_valores[texto_limpo] = valor_correspondente
+        return map_valores
 
     async def createFDF(self):
-        self.dbFuncs.insertLog("Iniciada montagem do BD!")
-        dm_m1 = pd.read_csv(self.tempFilesPatch + "/temp_model_1.csv", delimiter=";", usecols=self.useCols, low_memory=False, dtype=str, encoding="utf-8")
+        self.dbFuncs.insertLog("Iniciada montagem do Dataframe Principal!")
+        # dm_m1 = pd.read_csv(self.tempFilesPatch + "/temp_model_1.csv", delimiter=";", usecols=self.useCols, low_memory=False, dtype=str, encoding="utf-8")
         dm_m2 = pd.read_csv(self.tempFilesPatch + "/temp_model_2.csv", delimiter=";", usecols=self.useCols, low_memory=False, dtype=str, encoding="utf-8")
-        mainDF = pd.concat([dm_m1, dm_m2], ignore_index=True)
+        mainDF = pd.concat([dm_m2], ignore_index=True)
+        
+        # Mapear valores para a coluna "Parte_Corpo_Atingida"
+        self.dbFuncs.insertLog("Iniciado mapeamento Parte_Corpo_Atingida!")
+        map_partes_corpo = await self.mapear_valores(mainDF["Parte_Corpo_Atingida"], self.partesCorpo_df)
+        # mainDF["Parte_Corpo_Atingida"] = mainDF["Parte_Corpo_Atingida"].map(map_partes_corpo)
+        mainDF["Parte_Corpo_Atingida"].replace(map_partes_corpo, inplace=True)
+        self.dbFuncs.insertLog("Finalizado mapeamento Parte_Corpo_Atingida!")
+        
+        # Mapear valores para a coluna "Agente_Causador_Acidente"
+        self.dbFuncs.insertLog("Iniciado mapeamento Agente_Causador_Acidente!")
+        map_agentes = await self.mapear_valores(mainDF["Agente_Causador_Acidente"], self.agentes_df)
+        # mainDF["Agente_Causador_Acidente"] = mainDF["Agente_Causador_Acidente"].map(map_agentes)
+        mainDF["Agente_Causador_Acidente"].replace(map_agentes, inplace=True)
+        self.dbFuncs.insertLog("Finalizado mapeamento Agente_Causador_Acidente!")
+        
         self.mainDF = mainDF
+        self.dbFuncs.insertLog("Finalizada montagem do Dataframe Principal!")
 
+    async def encontrar_correspondencia(self,texto_procurado, dataframe):        
+        correspondencias = []
+        for descricao in dataframe["Desc"]:
+            correspondencia = await self.encontrar_correspondencia_caracter_por_caracter(texto_procurado, descricao)
+            if correspondencia:
+                correspondencias.append(correspondencia)
+        return correspondencias
+    
+    async def encontrar_correspondencia_caracter_por_caracter(self,texto_procurado, texto_encontrado):
+        caracteres_correspondentes = []
+        indice_procurado = 0
+        indice_encontrado = 0
+        while indice_procurado < len(texto_procurado) and indice_encontrado < len(texto_encontrado):
+            if texto_procurado[indice_procurado] == texto_encontrado[indice_encontrado]:
+                caracteres_correspondentes.append(texto_procurado[indice_procurado])
+                indice_procurado += 1
+                indice_encontrado += 1
+            else:
+                indice_encontrado += 1
+        return ''.join(caracteres_correspondentes)
+
+    async def remove_caracteres_especiais(self, texto):
+        return texto.replace(",","").replace("-","").replace("(","").replace(")","").replace("  "," ")
+    
     async def createMDF(self):
         await self.workMainDF("dm_profissoes", "CBO", "CBO", 1, ["CBO", "Ocupacao"], "-")
         await self.workMainDF("dm_doencas", "CID_10", "CID_10", 2, ["CID_10", "Doenca"], " ")
@@ -86,7 +154,7 @@ class ETL:
         await self.workMainDF("dm_tipo_lesao", ["Natureza_da_Lesao"], "Natureza_da_Lesao", 3, False, False)
         await self.workMainDF("dm_empregadores", ["CNAE2_0_Empregador", "CNAE2_0_Empregador_1"], "CNAE2_0_Empregador", 3, False, False)
         await self.workMainDF("dm_acidentes", ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], 3, False, False)
-    
+
     async def createTemp(self):
         self.dbFuncs.insertLog("Iniciada montagem do DF TEMP")
         for i in range(0, len(self.mainDF), self.chuncksize):
