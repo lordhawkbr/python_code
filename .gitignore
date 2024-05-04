@@ -5,4 +5,9 @@
 /configs/__pycache__
 .vs
 Dockerfile
+<<<<<<< HEAD
 requirements.txt
+=======
+requirements.txt
+.env_producao.txt
+>>>>>>> 1b32c3a7305eacc3eab4431b8f0efb961ec4eaa4

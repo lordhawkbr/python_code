@@ -152,7 +152,12 @@ class WorkWithFiles:
                         for i in range(len(value)):
                             if value[i].lower() in ["{ñ class}", " {ñ class}", "{ñ", "{ñ class", "", "000000-ignorado", "ignorado", "000000-não informado"]:
                                 value[i] = "000-ignorado"
+<<<<<<< HEAD
                             value[i] = value[i].lower()
+=======
+                            if value[i] == "*******":
+                                value[i] = "0000/00"
+>>>>>>> 1b32c3a7305eacc3eab4431b8f0efb961ec4eaa4
                         await csv.writer(
                             fileWrite,
                             delimiter=";",

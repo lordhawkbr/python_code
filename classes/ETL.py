@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 load_dotenv()
 import configs.dbFuncs as dbFuncs
 import shutil
-import pymysql
 import psutil
 import configs.tabelasAuxiliares as tbAux
 import re
@@ -42,9 +41,28 @@ class ETL:
             return pd.to_datetime(dt, format="%d/%m/%Y").strftime("%Y/%m")
         else:
             return dt
+<<<<<<< HEAD
+=======
+        
+    def apply_chunked(self, series):
+        result = pd.Series()
+        for chunk in range(0, len(series), self.chuncksize):
+            current_chunk = series.iloc[chunk:chunk + self.chuncksize]
+            converted_chunk = current_chunk.apply(self.converter_data)
+            result = pd.concat([result, converted_chunk])
+        return result
+
+    async def createFDF(self):
+        self.dbFuncs.insertLog("Mounting Main DF!")
+        dm_m1 = pd.read_csv(self.tempFilesPatch + "/temp_model_1.csv", delimiter=";", usecols=self.useCols, low_memory=True, dtype=str, encoding="utf-8")
+        dm_m2 = pd.read_csv(self.tempFilesPatch + "/temp_model_2.csv", delimiter=";", usecols=self.useCols, low_memory=True, dtype=str, encoding="utf-8")
+        self.mainDF = pd.concat([dm_m1, dm_m2], ignore_index=True)
+        self.mainDF["Data_Acidente"] = self.apply_chunked(self.mainDF["Data_Acidente"])
+        self.dbFuncs.insertLog("Main DF mounted!")
+>>>>>>> 1b32c3a7305eacc3eab4431b8f0efb961ec4eaa4
 
     async def workMainDF(self, dm_to_concat, columnsSelect, columnFilter, op, newColumns, string):
-        self.dbFuncs.insertLog(f"Iniciada montagem do DF {dm_to_concat}")
+        self.dbFuncs.insertLog(f"Mounting DF {dm_to_concat}")
         fileName = dm_to_concat
         finalDF = pd.DataFrame()
         for i in range(0, len(self.mainDF), self.chuncksize):
@@ -60,9 +78,13 @@ class ETL:
                 dm_to_concat = dm_to_concat.str.split(string, n=1, expand=True)
                 dm_to_concat.columns = newColumns
             if op == 3:
+                dm_to_concat = chunk[columnsSelect]
+                dm_to_concat[newColumns] = dm_to_concat[columnsSelect[0]].str.split(string, n=1, expand=True)
+            if op == 4 or op == 5:
                 dm_to_concat = chunk[columnsSelect].copy()
 
             finalDF = pd.concat([finalDF, dm_to_concat], ignore_index=False)
+<<<<<<< HEAD
 
             if fileName == "dm_acidentes":
                 finalDF["Data_Acidente"] = finalDF["Data_Acidente"].apply(self.converter_data)
@@ -120,6 +142,13 @@ class ETL:
         
         self.mainDF = mainDF
         self.dbFuncs.insertLog("Finalizada montagem do Dataframe Principal!")
+=======
+        if op != 5:
+            finalDF = finalDF.sort_values(by=columnFilter).drop_duplicates(subset=columnFilter).reset_index(drop=True)
+        finalDF.to_csv(self.dataframes + f"{fileName}.csv", sep=";", encoding="utf-8", index=True, index_label="id", mode="a+")
+        finalDF.to_sql(f"{fileName}", self.engine, if_exists="append", index=True, index_label="id")
+        self.dbFuncs.insertLog(f"DF {fileName} inserted in DB!")
+>>>>>>> 1b32c3a7305eacc3eab4431b8f0efb961ec4eaa4
 
     async def encontrar_correspondencia(self,texto_procurado, dataframe):        
         correspondencias = []
@@ -148,6 +177,7 @@ class ETL:
     async def createMDF(self):
         await self.workMainDF("dm_profissoes", "CBO", "CBO", 1, ["CBO", "Ocupacao"], "-")
         await self.workMainDF("dm_doencas", "CID_10", "CID_10", 2, ["CID_10", "Doenca"], " ")
+<<<<<<< HEAD
         await self.workMainDF("dm_localidades", "Munic_Empr", "CIM", 1, ["CIM", "Munic_Empr"], "-")
         await self.workMainDF("dm_agentes", ["Agente_Causador_Acidente"], "Agente_Causador_Acidente", 3, ["Agente_Causador_Acidente"], False)
         await self.workMainDF("dm_partescorpo", ["Parte_Corpo_Atingida"], "Parte_Corpo_Atingida", 3, False, False)
@@ -155,8 +185,17 @@ class ETL:
         await self.workMainDF("dm_empregadores", ["CNAE2_0_Empregador", "CNAE2_0_Empregador_1"], "CNAE2_0_Empregador", 3, False, False)
         await self.workMainDF("dm_acidentes", ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], 3, False, False)
 
+=======
+        await self.workMainDF("dm_localidades", ["Munic_Empr", "UF_Munic_Empregador"], "CIM", 3, ["CIM", "Munic_Empr"], "-")
+        await self.workMainDF("dm_agentes", ["Agente_Causador_Acidente"], "Agente_Causador_Acidente", 4, ["Agente_Causador_Acidente"], False)
+        await self.workMainDF("dm_partescorpo", ["Parte_Corpo_Atingida"], "Parte_Corpo_Atingida", 4, False, False)
+        await self.workMainDF("dm_tipo_lesao", ["Natureza_da_Lesao"], "Natureza_da_Lesao", 4, False, False)
+        await self.workMainDF("dm_empregadores", ["CNAE2_0_Empregador", "CNAE2_0_Empregador_1"], "CNAE2_0_Empregador", 4, False, False)
+        await self.workMainDF("dm_acidentes", ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], ["Data_Acidente", "Indica_obito_Acidente", "Sexo", "Tipo_do_Acidente", "UF_Munic_Acidente", "Data_Nascimento"], 5, False, False)
+    
+>>>>>>> 1b32c3a7305eacc3eab4431b8f0efb961ec4eaa4
     async def createTemp(self):
-        self.dbFuncs.insertLog("Iniciada montagem do DF TEMP")
+        self.dbFuncs.insertLog("Mounting DF TEMP")
         for i in range(0, len(self.mainDF), self.chuncksize):
             chunk = self.mainDF[i:i + self.chuncksize].copy()
             chunk[["CBO", "Ocupacao"]] = chunk["CBO"].str.split("-", n=1, expand=True)
@@ -168,15 +207,15 @@ class ETL:
             chunk[["CIM", "Munic_Empr"]] = chunk["Munic_Empr"].str.split("-", n=1, expand=True)
             self.tempDF = pd.concat([self.tempDF, chunk], ignore_index=True)
             chunk.to_sql("ft_temp_cats", self.engine, if_exists="append", index=True, index_label="id")
-            chunk.to_csv(self.tempFilesPatch + "ft_temp_cats.csv", sep=";", encoding="utf-8", index=True, index_label="id", mode="a+")
-        self.dbFuncs.insertLog("Tabela ft_temp_cats inserida no BD!")
+            # chunk.to_csv(self.tempFilesPatch + "ft_temp_cats.csv", sep=";", encoding="utf-8", index=True, index_label="id", mode="a+")
+        self.dbFuncs.insertLog("Table ft_temp_cats inserted in DB!")
 
     def loadCSV(self, fileName, index_col):
         filePath = os.path.join(self.dataframes + fileName)
         return pd.read_csv(filePath, sep=";", dtype=str).set_index(index_col)["id"].to_dict()
 
     async def createFact(self):
-        self.dbFuncs.insertLog("Iniciando montagem do DF FATO!")
+        self.dbFuncs.insertLog("Mounting DF FACT!")
     
         doencas_dict = self.loadCSV("dm_doencas.csv", "CID_10")
         agentes_dict = self.loadCSV("dm_agentes.csv", "Agente_Causador_Acidente")
@@ -199,7 +238,7 @@ class ETL:
         df_ft_cats["id_acidentes"] = df_ft_cats[columns_to_map].apply(tuple, axis=1).map(acidentes_dict)
         df_ft_cats = df_ft_cats[["id_doencas", "id_agentes", "id_profissoes", "id_empregadores", "id_localidades", "id_tipo_lesao", "id_partescorpo", "id_acidentes"]]
         df_ft_cats.to_sql("ft_cats", self.engine, if_exists="append", index=False)
-        self.dbFuncs.insertLog("DF FATO inserido no BD!")
+        self.dbFuncs.insertLog("DF FACT inserted in DB!")
 
     async def main(self):
         await self.createFDF()
